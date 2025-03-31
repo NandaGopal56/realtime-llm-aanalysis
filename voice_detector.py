@@ -4,26 +4,10 @@ import numpy as np
 import struct
 import pyaudio
 import wave
-import whisper
-import warnings
 from collections import deque
 import time
 
-warnings.filterwarnings("ignore", message="FP16 is not supported on CPU; using FP32 instead")
 
-# Load the Whisper Tiny model
-model = whisper.load_model("tiny")
-
-
-def transcribe_audio(model, filename):
-
-    # Load the audio file and pad/trim it to fit 30 seconds
-    audio = whisper.load_audio(filename)
-
-    # Make a prediction
-    result = model.transcribe(audio, word_timestamps=True)
-
-    return result
 
 class VoiceDetector:
     def __init__(self, sample_rate=16000, frame_duration=30):
@@ -185,6 +169,7 @@ if __name__ == "__main__":
         voice_detected = voice_detector.detect_voice(data)
 
         if voice_detected:
+            print("Listening...")
             # Track time spent in the "if" block
             speech_time += time.time() - block_start_time
 
@@ -193,6 +178,7 @@ if __name__ == "__main__":
             audio_buffer.append(data)
 
         else:
+            print("No audio...")
             # Track time spent in the "else" block
             silence_time += time.time() - block_start_time
 
@@ -220,14 +206,22 @@ if __name__ == "__main__":
 
                 print(f"Audio recorded and saved as {OUTPUT_FILENAME}")
 
-    # Cleanup
-    stream.stop_stream()
-    stream.close()
-    audio.terminate()
+                result = transcribe_audio(model=model, filename=OUTPUT_FILENAME)
 
-    # Print final timing results
-    total_time = time.time() - start_time
-    print(f"Total Recording Time: {total_time:.2f} sec")
-    print(f"Total Speech Time: {speech_time:.2f} sec")
-    print(f"Total Silence Time (before max silence): {silence_time:.2f} sec")
-    print(f"Final Silence Time (after last speech): {final_silence_time:.2f} sec")
+                print(result)
+
+                silence_duration = 0
+                audio_buffer.clear()
+
+
+    # # Cleanup
+    # stream.stop_stream()
+    # stream.close()
+    # audio.terminate()
+
+    # # Print final timing results
+    # total_time = time.time() - start_time
+    # print(f"Total Recording Time: {total_time:.2f} sec")
+    # print(f"Total Speech Time: {speech_time:.2f} sec")
+    # print(f"Total Silence Time (before max silence): {silence_time:.2f} sec")
+    # print(f"Final Silence Time (after last speech): {final_silence_time:.2f} sec")
