@@ -1,26 +1,51 @@
-import pyaudio
-from audio_processor import AudioProcessor
+import asyncio
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
 
-def record_from_mic(self):
-    CHUNK = 1024
-    FORMAT = pyaudio.paInt16
-    CHANNELS = 1
-    RATE = 44100
+app = FastAPI()
+
+# Enable CORS for cross-origin WebSocket connections
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Adjust for production security
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+class QueueManager:
+    _queue = None
+
+    @classmethod
+    def get_queue(cls):
+        """Returns the global queue, initializing it only once."""
+        if cls._queue is None:
+            cls._queue = asyncio.Queue()
+        return cls._queue
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()  # Ensure WebSocket connection is accepted properly
+    queue = QueueManager.get_queue()
     
-    audio = pyaudio.PyAudio()
-    stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
+    print(f"Client connected: {websocket.client}")
     
-    print("Listening for audio...")
-    filename = self.process_audio_stream(iter(lambda: stream.read(CHUNK, exception_on_overflow=False), None), FORMAT, CHANNELS, RATE, CHUNK)
-    
-    stream.stop_stream()
-    stream.close()
-    audio.terminate()
-    return filename
+    try:
+        while True:
+            message = await websocket.receive_bytes()
+            await queue.put(message)
+    except WebSocketDisconnect:
+        print(f"Client disconnected: {websocket.client}")
+
+async def websocket_audio_generator():
+    """Async generator that yields data from the global queue."""
+    queue = QueueManager.get_queue()
+    print(id(queue))
+    while True:
+        data = await queue.get()
+        print("Len of queue in generator", queue.qsize())
+        yield data
 
 if __name__ == "__main__":
-    processor = AudioProcessor()
-    recorded_file = processor.record_from_mic()
-    if recorded_file:
-        transcription = processor.transcribe_audio(recorded_file)
-        print(transcription)
+    uvicorn.run(app, host="localhost", port=8765)
