@@ -18,7 +18,7 @@
       let isMuted = false;
 
       function connectWebSocket() {
-        ws = new WebSocket("ws://localhost:8765/ws");
+        ws = new WebSocket("ws://localhost:8765/ws/1/1");
         ws.onopen = () => console.log("WebSocket connected");
         ws.onclose = () => console.log("WebSocket disconnected");
         ws.onerror = (error) => console.error("WebSocket error:", error);

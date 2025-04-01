@@ -1,51 +1,59 @@
 import asyncio
+import uvicorn
+import json
+import base64
+from redis import asyncio as aioredis
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
+from globals import REDIS_CHANNEL
+
 
 app = FastAPI()
 
 # Enable CORS for cross-origin WebSocket connections
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust for production security
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-class QueueManager:
-    _queue = None
 
-    @classmethod
-    def get_queue(cls):
-        """Returns the global queue, initializing it only once."""
-        if cls._queue is None:
-            cls._queue = asyncio.Queue()
-        return cls._queue
+@app.websocket("/ws/{user_id}/{session_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: str, session_id: str):
+    """Handles WebSocket connections and directly publishes audio to Redis."""
+    await websocket.accept()
+    redis = await aioredis.Redis.from_url("redis://localhost")
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()  # Ensure WebSocket connection is accepted properly
-    queue = QueueManager.get_queue()
-    
-    print(f"Client connected: {websocket.client}")
-    
+    print(f"Client connected - User: {user_id}, Session: {session_id}")
+
     try:
         while True:
-            message = await websocket.receive_bytes()
-            await queue.put(message)
-    except WebSocketDisconnect:
-        print(f"Client disconnected: {websocket.client}")
+            audio_data = await websocket.receive_bytes()
 
-async def websocket_audio_generator():
-    """Async generator that yields data from the global queue."""
-    queue = QueueManager.get_queue()
-    print(id(queue))
-    while True:
-        data = await queue.get()
-        print("Len of queue in generator", queue.qsize())
-        yield data
+            if audio_data:
+                # Base64 encode the audio bytes to make them JSON serializable
+                audio_base64 = base64.b64encode(audio_data).decode('utf-8')
+            
+                # Create the message dictionary
+                message = {
+                    "user_id": user_id,
+                    "session_id": session_id,
+                    "audio": audio_base64  # Base64-encoded audio data
+                }
+            
+                # Serialize the message to JSON string before publishing
+                message_json = json.dumps(message)
+                await redis.publish(REDIS_CHANNEL, message_json)  # Publish JSON string
+                print(f"Published audio for User: {user_id}, Session: {session_id}, audio_base64: {audio_data[0]}")
+
+    except WebSocketDisconnect:
+        print(f"Client disconnected - User: {user_id}, Session: {session_id}")
+    finally:
+        await redis.aclose()
+
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="localhost", port=8765)
