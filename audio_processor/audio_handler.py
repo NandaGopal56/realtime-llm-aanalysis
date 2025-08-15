@@ -1,4 +1,4 @@
-"""Audio recording and processing functionality"""
+'''Audio recording and processing functionality'''
 
 import numpy as np
 import speech_recognition as sr
@@ -8,7 +8,7 @@ from sys import platform
 from config import AUDIO_CONFIG, SYSTEM_CONFIG
 
 class AudioHandler:
-    """Handles audio recording and preprocessing"""
+    '''Handles audio recording and preprocessing'''
     
     def __init__(self):
         self.recorder = sr.Recognizer()
@@ -20,7 +20,7 @@ class AudioHandler:
         self._calibrate_microphone()
         
     def _setup_microphone(self) -> sr.Microphone:
-        """Setup microphone based on platform"""
+        '''Setup microphone based on platform'''
         if 'linux' in platform:
             mic_name = SYSTEM_CONFIG.default_microphone
             if not mic_name or mic_name == 'list':
@@ -34,13 +34,13 @@ class AudioHandler:
             return sr.Microphone(sample_rate=AUDIO_CONFIG.sample_rate)
     
     def _list_microphones(self):
-        """List available microphones"""
+        '''List available microphones'''
         print("Available microphone devices are: ")
         for index, name in enumerate(sr.Microphone.list_microphone_names()):
             print(f"Microphone with name \"{name}\" found")
     
     def _calibrate_microphone(self):
-        """Calibrate microphone for ambient noise"""
+        '''Calibrate microphone for ambient noise'''
         if self.source:
             with self.source:
                 print("Calibrating microphone for ambient noise...")
@@ -48,12 +48,12 @@ class AudioHandler:
                 print("Microphone calibrated.")
     
     def _record_callback(self, _, audio: sr.AudioData) -> None:
-        """Callback function for background recording"""
+        '''Callback function for background recording'''
         data = audio.get_raw_data()
         self.data_queue.put(data)
     
     def start_listening(self, callback: Optional[Callable] = None):
-        """Start background listening"""
+        '''Start background listening'''
         if not self.source:
             raise RuntimeError("No microphone source available")
         
@@ -65,7 +65,7 @@ class AudioHandler:
         )
     
     def get_audio_data(self) -> Optional[bytes]:
-        """Get accumulated audio data from queue"""
+        '''Get accumulated audio data from queue'''
         if self.data_queue.empty():
             return None
         
@@ -77,10 +77,10 @@ class AudioHandler:
         return b''.join(audio_chunks)
     
     def audio_to_numpy(self, audio_data: bytes) -> np.ndarray:
-        """Convert raw audio bytes to numpy array for whisper"""
+        '''Convert raw audio bytes to numpy array for whisper'''
         return np.frombuffer(audio_data, dtype=np.int16).astype(np.float32) / 32768.0
     
     def clear_queue(self):
-        """Clear the audio queue"""
+        '''Clear the audio queue'''
         while not self.data_queue.empty():
             self.data_queue.get()

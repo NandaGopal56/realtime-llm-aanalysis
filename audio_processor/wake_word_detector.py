@@ -1,4 +1,4 @@
-"""Wake word detection functionality"""
+'''Wake word detection functionality - FIXED VERSION'''
 
 import time
 from datetime import datetime, timedelta
@@ -6,7 +6,7 @@ from typing import List, Optional
 from config import WAKE_WORD_CONFIG
 
 class WakeWordDetector:
-    """Handles wake word detection and activation state"""
+    '''Handles wake word detection and activation state'''
     
     def __init__(self):
         self.wake_words = WAKE_WORD_CONFIG.wake_words
@@ -16,12 +16,13 @@ class WakeWordDetector:
         self.is_active = False
         self.activation_time = None
         self.last_wake_detection = None
+        self.last_speech_activity = None  # Track when speech was last detected
         
     def check_for_wake_word(self, text: str) -> bool:
-        """
+        '''
         Check if the transcribed text contains a wake word
         Returns True if wake word is detected
-        """
+        '''
         if not text:
             return False
             
@@ -29,49 +30,58 @@ class WakeWordDetector:
         
         for wake_word in self.wake_words:
             if wake_word.lower() in text_lower:
-                print(f"🎤 Wake word detected: '{wake_word}'")
+                print(f"Wake word detected: '{wake_word}'")
                 self._activate()
                 return True
         
         return False
     
     def _activate(self):
-        """Activate the assistant"""
+        '''Activate the assistant'''
         self.is_active = True
         self.activation_time = datetime.now()
         self.last_wake_detection = datetime.now()
-        print("✅ Assistant activated! Listening for commands...")
+        self.last_speech_activity = datetime.now()
+        print("Assistant activated! Listening for commands...")
     
     def deactivate(self):
-        """Deactivate the assistant"""
+        '''Deactivate the assistant'''
         self.is_active = False
         self.activation_time = None
-        print("💤 Assistant deactivated. Waiting for wake word...")
+        self.last_speech_activity = None
+        print("Assistant deactivated. Waiting for wake word...")
     
     def update_activity(self):
-        """Update activation state based on timeout"""
+        '''Update activation state based on timeout - only when NOT speaking'''
         if not self.is_active:
             return
             
         if self.activation_time:
-            elapsed = datetime.now() - self.activation_time
+            # Check timeout from last speech activity, not activation time
+            reference_time = self.last_speech_activity or self.activation_time
+            elapsed = datetime.now() - reference_time
+            
             if elapsed.total_seconds() > self.timeout_duration:
                 self.deactivate()
     
     def extend_activation(self):
-        """Extend the activation time when new speech is detected"""
+        '''Extend the activation time when new speech is detected'''
         if self.is_active:
-            self.activation_time = datetime.now()
+            current_time = datetime.now()
+            self.activation_time = current_time
+            self.last_speech_activity = current_time
     
     def get_status(self) -> dict:
-        """Get current status of the wake word detector"""
+        '''Get current status of the wake word detector'''
         status = {
             'is_active': self.is_active,
             'wake_words': self.wake_words,
         }
         
         if self.is_active and self.activation_time:
-            elapsed = datetime.now() - self.activation_time
+            # Calculate remaining time from last speech activity
+            reference_time = self.last_speech_activity or self.activation_time
+            elapsed = datetime.now() - reference_time
             remaining = max(0, self.timeout_duration - elapsed.total_seconds())
             status['time_remaining'] = remaining
             status['activation_time'] = self.activation_time
@@ -79,14 +89,14 @@ class WakeWordDetector:
         return status
     
     def detect_wake_word(self, audio_data: bytes) -> Optional[str]:
-        """Detect wake word in audio data
+        '''Detect wake word in audio data
         
         Args:
             audio_data: Raw audio data to check for wake words
             
         Returns:
             str: The detected wake word if found, None otherwise
-        """
+        '''
         if not audio_data:
             return None
             
@@ -103,6 +113,6 @@ class WakeWordDetector:
         return None
     
     def should_process_speech(self) -> bool:
-        """Check if speech should be processed (assistant is active)"""
-        self.update_activity()
+        '''Check if speech should be processed (assistant is active)'''
+        # Don't call update_activity here - let the main loop handle it
         return self.is_active

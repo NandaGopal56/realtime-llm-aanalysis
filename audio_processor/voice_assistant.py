@@ -1,4 +1,4 @@
-"""Main voice assistant coordinator"""
+'''Main voice assistant coordinator'''
 
 import os
 import time
@@ -11,7 +11,7 @@ from transcription_manager import TranscriptionManager
 
 
 class VoiceAssistant:
-    """Main voice assistant that coordinates all components"""
+    '''Main voice assistant that coordinates all components'''
     
     def __init__(self):
         self.audio_handler = AudioHandler()
@@ -19,129 +19,103 @@ class VoiceAssistant:
         self.transcription_manager = TranscriptionManager()
         
         # State management
-        self.phrase_time = None
-        self.phrase_timeout = 3.0  # seconds
+        self.last_audio_time = None
+        self.sentence_pause_timeout = 2.5  # Increased to 2.5 seconds for better sentence detection
         self.is_running = False
-        
-        # Periodic state saving
-        self.last_state_save = datetime.now()
-        self.state_save_interval = 5.0  # seconds
-    
+        self.is_speaking = False
+
     def _display_status(self):
-        """Display current status and conversation"""
-        
-        # Wake word status
+        '''Display simple status'''
+        # Current status
         wake_status = self.wake_word_detector.get_status()
         if wake_status['is_active']:
+            status = "LISTENING" if not self.is_speaking else "SPEAKING"
             remaining = wake_status.get('time_remaining', 0)
-            print(f"✅ Status: ACTIVELY LISTENING (⏰ {remaining:.1f}s remaining)")
+            print(f"Status: {status} ({remaining:.0f}s)")
         else:
-            print(f"💤 Status: WAITING for wake word. Say: {' or '.join(wake_status['wake_words'])}")
+            wake_words = ' or '.join(wake_status['wake_words'])
+            print(f"Status: SLEEPING - Say '{wake_words}' to wake")
+        
+        # Show conversation event
+        conversation_event = self.transcription_manager.get_conversation_event()
+        print(conversation_event)
         
         print()
-        
-        # Session info
-        session = self.transcription_manager.get_session_info()
-        print(session)
-        
-        if wake_status['is_active']:
-            print()
-            print("💬 CURRENT CONVERSATION:")
-            print("-" * 30)
-            
-            # Show individual chunks
-            for chunk in self.transcription_manager.current_session.chunks:
-                timestamp = chunk['timestamp'].strftime('%H:%M:%S')
-                print(f"[{timestamp}] {chunk['text']}")
-            
-            if not self.transcription_manager.current_session.chunks:
-                print("(Listening for your command...)")
-                
-            # Show full conversation if available
-            if session_info['full_conversation']:
-                print("\n" + "-" * 30)
-                print("📝 FULL CONVERSATION:")
-                print(session_info['full_conversation'])
-        
-        print("\n" + "=" * 50)
-        print("Press Ctrl+C to exit")
     
-    def _process_transcription(self, text: str, phrase_complete: bool):
-        """Process transcribed text"""
-            
-        # Check for wake word if not active
+    def _process_transcription(self, text: str, sentence_complete: bool):
+        '''Process transcribed text'''
+        # Check for wake word if sleeping
         if not self.wake_word_detector.is_active:
             if self.wake_word_detector.check_for_wake_word(text):
-                session_id = self.transcription_manager.start_new_session()
+                self.transcription_manager.start_new_session()
             return
         
-        # If assistant is active, extend activation and log conversation updates
+        # Extend wake time
         self.wake_word_detector.extend_activation()
         
+        # Only process completed sentences
+        if sentence_complete:
+            self.transcription_manager.add_completed_sentence(text)
+            self.is_speaking = False
+            print()  # Clean line before showing event
+            self._display_status()
     
     def run(self):
-        """Main run loop"""
+        '''Main run loop'''
         if not self.audio_handler.source:
-            print(f"❌ No microphone available. Exiting.")
+            print("No microphone available")
             return
         
-        # Start background audio recording
         self.audio_handler.start_listening()
         self.is_running = True
-        
-        # Initial display
         self._display_status()
         
         try:
             while self.is_running:
                 current_time = datetime.now()
-                
-                # Check for audio data
                 audio_data = self.audio_handler.get_audio_data()
                 
                 if audio_data:
-                    phrase_complete = False
+                    # Audio detected - just accumulate, don't transcribe yet
+                    self.last_audio_time = current_time
+                    self.is_speaking = True
                     
-                    # Check if enough time has passed for a complete phrase
-                    if (self.phrase_time and 
-                        current_time - self.phrase_time > timedelta(seconds=self.phrase_timeout)):
-                        phrase_complete = True
-                    
-                    self.phrase_time = current_time
-                    
-                    # Process the audio
-                    text = self.transcription_manager.process_audio_chunk(
-                        audio_data, phrase_complete
-                    )
-                    
-                    if text:
-                        self._process_transcription(text, phrase_complete)
-                        self._display_status()
+                    # Just store audio, don't transcribe until pause
+                    self.transcription_manager.accumulate_audio(audio_data)
                 
                 else:
-                    # No audio data, just update display and sleep
-                    time.sleep(0.25)
+                    # Check for sentence completion due to silence
+                    if (self.is_speaking and self.last_audio_time and 
+                        current_time - self.last_audio_time > timedelta(seconds=self.sentence_pause_timeout)):
+                        
+                        # Transcribe the complete sentence now
+                        text = self.transcription_manager.transcribe_accumulated_audio()
+                        if text:
+                            self._process_transcription(text, sentence_complete=True)
                     
-                    # Update wake word detector (handles timeout)
-                    prev_active = self.wake_word_detector.is_active
-                    self.wake_word_detector.update_activity()
+                    # Update wake detector - but don't timeout if still speaking
+                    was_active = self.wake_word_detector.is_active
                     
-                    # Refresh display if status changed
-                    if prev_active != self.wake_word_detector.is_active:
+                    # Only update activity if not currently speaking
+                    if not self.is_speaking:
+                        self.wake_word_detector.update_activity()
+                    else:
+                        # If speaking, extend activation to prevent timeout
+                        self.wake_word_detector.extend_activation()
+                    
+                    if was_active != self.wake_word_detector.is_active:
+                        if not self.wake_word_detector.is_active:
+                            self.transcription_manager.end_current_session()
+                            self.is_speaking = False
                         self._display_status()
+                    
+                    time.sleep(0.1)
                         
         except KeyboardInterrupt:
             self.stop()
     
     def stop(self):
-        """Stop the voice assistant"""
-        print("\n🛑 Stopping SARS Voice Assistant...")
+        '''Stop the voice assistant'''
+        print("Stopping...")
         self.is_running = False
-        
-        # Save current session
-        if self.transcription_manager.current_session.chunks:
-            session_id = self.transcription_manager.current_session.session_id
-            conversation = self.transcription_manager.current_session.full_conversation
-        
-        # Final status summary
-        print("👋 Goodbye!")
+        print("Goodbye")

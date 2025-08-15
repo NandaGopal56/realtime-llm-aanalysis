@@ -8,17 +8,17 @@ from config import AUDIO_CONFIG, MODEL_CONFIG, WAKE_WORD_CONFIG, SYSTEM_CONFIG
 from voice_assistant import VoiceAssistant
 
 def setup_argument_parser():
-    """Set up command line argument parser"""
+    '''Set up command line argument parser'''
     parser = argparse.ArgumentParser(
         description="SARS - Voice Assistant with Wake Word Support",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+        epilog='''
         Examples:
         python main.py                                  # Use default settings
         python main.py --wake-words "hey sars" "sars"   # Custom wake words
         python main.py --energy 500                     # Lower energy threshold
         python main.py --list-mics                      # List available microphones (Linux)
-        """
+        '''
     )
     
     
@@ -89,7 +89,7 @@ def update_config_from_args(args):
 
 
 def main():
-    """Main entry point with enhanced logging and session management"""
+    '''Main entry point with enhanced logging and session management'''
     parser = setup_argument_parser()
     args = parser.parse_args()
     

@@ -1,4 +1,4 @@
-"""Configuration settings for the voice assistant"""
+'''Configuration settings for the voice assistant'''
 
 import os
 from dataclasses import dataclass
@@ -6,7 +6,7 @@ from typing import List
 
 @dataclass
 class AudioConfig:
-    """Audio processing configuration"""
+    '''Audio processing configuration'''
     sample_rate: int = 16000
     energy_threshold: int = 1000
     record_timeout: float = 2.0
@@ -15,18 +15,18 @@ class AudioConfig:
 
 @dataclass
 class ModelConfig:
-    """Whisper model configuration"""
+    '''Whisper model configuration'''
     model_size: str = "small"
     language: str = "en" 
 
     @property
     def model_name(self) -> str:
-        """Get the full model name with language suffix"""
+        '''Get the full model name with language suffix'''
         return f"{self.model_size}.{self.language}"
 
 @dataclass
 class WakeWordConfig:
-    """Wake word detection configuration"""
+    '''Wake word detection configuration'''
     wake_words: List[str] = None
     confidence_threshold: float = 0.7
     timeout_after_wake: float = 30.0  # seconds to stay active after wake word
@@ -37,7 +37,7 @@ class WakeWordConfig:
 
 @dataclass
 class SystemConfig:
-    """System-wide configuration"""
+    '''System-wide configuration'''
     default_microphone: str = "pulse"  # for Linux
     
 

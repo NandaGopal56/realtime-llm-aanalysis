@@ -75,10 +75,10 @@ def main():
         recorder.adjust_for_ambient_noise(source)
 
     def record_callback(_, audio:sr.AudioData) -> None:
-        """
+        '''
         Threaded callback function to receive audio data when recordings finish.
         audio: An AudioData containing the recorded bytes.
-        """
+        '''
         # Grab the raw bytes and push it into the thread safe queue.
         data = audio.get_raw_data()
         data_queue.put(data)
