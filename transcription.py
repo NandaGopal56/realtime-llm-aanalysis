@@ -14,20 +14,14 @@ from sys import platform
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="small", help="Model to use",
-                        choices=["tiny", "base", "small", "medium", "large"])
-    parser.add_argument("--non_english", action='store_true',
-                        help="Don't use the english model.")
-    parser.add_argument("--energy_threshold", default=1000,
-                        help="Energy level for mic to detect.", type=int)
-    parser.add_argument("--record_timeout", default=2,
-                        help="How real time the recording is in seconds.", type=float)
-    parser.add_argument("--phrase_timeout", default=3,
-                        help="How much empty space between recordings before we "
+    parser.add_argument("--model", default="small", help="Model to use", choices=["tiny", "base", "small", "medium", "large"])
+    parser.add_argument("--non_english", action='store_true', help="Don't use the english model.")
+    parser.add_argument("--energy_threshold", default=1000, help="Energy level for mic to detect.", type=int)
+    parser.add_argument("--record_timeout", default=2, help="How real time the recording is in seconds.", type=float)
+    parser.add_argument("--phrase_timeout", default=3, help="How much empty space between recordings before we "
                              "consider it a new line in the transcription.", type=float)
     if 'linux' in platform:
-        parser.add_argument("--default_microphone", default='pulse',
-                            help="Default microphone name for SpeechRecognition. "
+        parser.add_argument("--default_microphone", default='pulse',help="Default microphone name for SpeechRecognition. "
                                  "Run this with 'list' to view available Microphones.", type=str)
     args = parser.parse_args()
 
@@ -142,18 +136,6 @@ def main():
                         else:
                             chunks.append(text)
 
-                    # Save files after each transcription
-                    # Save chunks
-                    with open(chunks_filename, 'w', encoding='utf-8') as f:
-                        for i, chunk in enumerate(chunks, 1):
-                            if chunk:  # Only write non-empty chunks
-                                f.write(f"Chunk {i}: {chunk}\n")
-                    
-                    # Save full transcription
-                    with open(full_filename, 'w', encoding='utf-8') as f:
-                        full_text = ' '.join([line for line in transcription if line.strip()])
-                        f.write(full_text)
-
                 # Clear the console to reprint the updated transcription.
                 os.system('cls' if os.name=='nt' else 'clear')
                 print("=== LIVE TRANSCRIPTION ===")
@@ -168,19 +150,6 @@ def main():
                 sleep(0.25)
         except KeyboardInterrupt:
             break
-
-    print(f"\n\nFinal files saved:")
-    print(f"Chunks: {chunks_filename}")
-    print(f"Full transcription: {full_filename}")
-    
-    print("\nChunked Transcription:")
-    for i, chunk in enumerate(chunks, 1):
-        if chunk:
-            print(f"Chunk {i}: {chunk}")
-    
-    print("\nFull Transcription:")
-    full_text = ' '.join([line for line in transcription if line.strip()])
-    print(full_text)
 
 
 if __name__ == "__main__":
