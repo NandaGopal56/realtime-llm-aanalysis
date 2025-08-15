@@ -1,4 +1,3 @@
-# wake_word_detector.py
 """Wake word detection functionality"""
 
 import time
@@ -78,6 +77,30 @@ class WakeWordDetector:
             status['activation_time'] = self.activation_time
         
         return status
+    
+    def detect_wake_word(self, audio_data: bytes) -> Optional[str]:
+        """Detect wake word in audio data
+        
+        Args:
+            audio_data: Raw audio data to check for wake words
+            
+        Returns:
+            str: The detected wake word if found, None otherwise
+        """
+        if not audio_data:
+            return None
+            
+        # For now, we'll just check if the audio data is not empty
+        # In a real implementation, you would process the audio data
+        # to detect the wake word using a model like Porcupine or Snowboy
+        
+        # This is a placeholder implementation that simulates wake word detection
+        # by checking if the audio data is above a certain threshold
+        if len(audio_data) > 1000:  # Simple threshold check
+            # Return the first wake word as detected
+            return self.wake_words[0] if self.wake_words else None
+            
+        return None
     
     def should_process_speech(self) -> bool:
         """Check if speech should be processed (assistant is active)"""

@@ -1,4 +1,3 @@
-# config.py
 """Configuration settings for the voice assistant"""
 
 import os
@@ -18,14 +17,12 @@ class AudioConfig:
 class ModelConfig:
     """Whisper model configuration"""
     model_size: str = "small"
-    non_english: bool = False
-    
+    language: str = "en" 
+
     @property
     def model_name(self) -> str:
-        """Get the full model name with language suffix if needed"""
-        if self.model_size != "small" and not self.non_english:
-            return f"{self.model_size}.en"
-        return self.model_size
+        """Get the full model name with language suffix"""
+        return f"{self.model_size}.{self.language}"
 
 @dataclass
 class WakeWordConfig:
@@ -41,12 +38,8 @@ class WakeWordConfig:
 @dataclass
 class SystemConfig:
     """System-wide configuration"""
-    output_dir: str = "transcriptions"
     default_microphone: str = "pulse"  # for Linux
     
-    def __post_init__(self):
-        # Create output directory if it doesn't exist
-        os.makedirs(self.output_dir, exist_ok=True)
 
 # Global configuration instances
 AUDIO_CONFIG = AudioConfig()

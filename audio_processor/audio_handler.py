@@ -1,4 +1,3 @@
-# audio_handler.py
 """Audio recording and processing functionality"""
 
 import numpy as np

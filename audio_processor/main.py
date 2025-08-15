@@ -1,5 +1,7 @@
 import argparse
 import sys
+import os
+import traceback
 from sys import platform
 
 from config import AUDIO_CONFIG, MODEL_CONFIG, WAKE_WORD_CONFIG, SYSTEM_CONFIG
@@ -13,25 +15,12 @@ def setup_argument_parser():
         epilog="""
         Examples:
         python main.py                                  # Use default settings
-        python main.py --model large                    # Use large model
         python main.py --wake-words "hey sars" "sars"   # Custom wake words
         python main.py --energy 500                     # Lower energy threshold
         python main.py --list-mics                      # List available microphones (Linux)
         """
     )
     
-    # Model configuration
-    parser.add_argument(
-        "--model", 
-        default=MODEL_CONFIG.model_size,
-        choices=["tiny", "base", "small", "medium", "large"],
-        help="Whisper model to use (default: %(default)s)"
-    )
-    parser.add_argument(
-        "--non-english", 
-        action='store_true',
-        help="Don't use the English-specific model"
-    )
     
     # Audio configuration
     parser.add_argument(
@@ -67,13 +56,6 @@ def setup_argument_parser():
         help="Seconds to stay active after wake word (default: %(default)s)"
     )
     
-    # System configuration
-    parser.add_argument(
-        "--output-dir", 
-        default=SYSTEM_CONFIG.output_dir,
-        help="Output directory for transcriptions (default: %(default)s)"
-    )
-    
     # Linux-specific options
     if 'linux' in platform:
         parser.add_argument(
@@ -90,10 +72,7 @@ def setup_argument_parser():
     return parser
 
 def update_config_from_args(args):
-    """Update global configuration based on command line arguments"""
-    # Update model config
-    MODEL_CONFIG.model_size = args.model
-    MODEL_CONFIG.non_english = args.non_english
+    '''Update global configuration based on command line arguments'''
     
     # Update audio config
     AUDIO_CONFIG.energy_threshold = args.energy
@@ -103,9 +82,6 @@ def update_config_from_args(args):
     # Update wake word config
     WAKE_WORD_CONFIG.wake_words = args.wake_words
     WAKE_WORD_CONFIG.timeout_after_wake = args.wake_timeout
-    
-    # Update system config
-    SYSTEM_CONFIG.output_dir = args.output_dir
     
     # Linux-specific
     if 'linux' in platform:
@@ -127,12 +103,6 @@ def main():
     # Update configuration
     update_config_from_args(args)
     
-    # Create logs directory if it doesn't exist
-    log_dir = "logs"
-    os.makedirs(log_dir, exist_ok=True)
-    
-    print("🚀 Starting SARS Voice Assistant with enhanced logging...")
-    print(f"📂 Logs will be saved to: {os.path.abspath(log_dir)}")
     # Print startup information
     print("🤖 SARS Voice Assistant")
     print("=" * 40)
@@ -142,7 +112,6 @@ def main():
     print(f"⏳ Phrase Timeout: {AUDIO_CONFIG.phrase_timeout}s")
     print(f"🎯 Wake Words: {', '.join(WAKE_WORD_CONFIG.wake_words)}")
     print(f"⏰ Wake Timeout: {WAKE_WORD_CONFIG.timeout_after_wake}s")
-    print(f"📁 Output Directory: {SYSTEM_CONFIG.output_dir}")
     print("=" * 40)
     print()
     
@@ -157,6 +126,7 @@ def main():
         print("\n👋 Goodbye!")
         sys.exit(0)
     except Exception as e:
+        print(traceback.format_exc())
         print(f"❌ Error: {e}")
         sys.exit(1)
 
